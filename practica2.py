@@ -1,4 +1,5 @@
 import random
+from concurrent.futures import ThreadPoolExecutor
 
 class Sudoku:
     def __init__(self, n):
@@ -76,32 +77,51 @@ class Sudoku:
     def to_tuple(self):
         return tuple(tuple(row) for row in self.matrix)
 
-
-def dfs(sudoku, steps=[], visited=set()):
+def dfs(sudoku, steps=[], visited=set(), max_calls=500, calls=0):
     estado_actual = sudoku.to_tuple()
-    if estado_actual in visited:
+
+    if calls >= max_calls:
         return None
-    visited.add(estado_actual)
+
     if sudoku.matrix == sudoku.matrix_solved:
         return steps
+
+    if estado_actual in visited:
+        return None
+
+    visited.add(estado_actual)
+
     movimientos = [
         (sudoku.move_up(), "up"),
         (sudoku.move_down(), "down"),
         (sudoku.move_left(), "left"),
         (sudoku.move_right(), "right")
     ]
+
     for nuevo_estado, direccion in movimientos:
         if nuevo_estado:
-            resultado = dfs(nuevo_estado, steps + [direccion], visited)
+            resultado = dfs(nuevo_estado, steps + [direccion], visited, max_calls, calls + 1)
             if resultado:
                 return resultado
+
     return None
 
 
-if __name__ == "__main__":
-    sudoku = Sudoku(2)
-    sudoku.shuffle()
-    print(sudoku)
+def dfs_thread(sudoku, max_calls=500):
+    resultado = dfs(sudoku, [], set(), max_calls=max_calls)
+    if resultado:
+        print("Solución encontrada:", resultado)
 
-    print(dfs(sudoku))
+def ejecutar_multithreading(sudoku, num_hilos=4, max_calls=500):
+    with ThreadPoolExecutor(max_workers=num_hilos) as executor:
+        for i in range(num_hilos):
+            print(f"Iniciando hilo {i + 1}...")
+            executor.submit(dfs_thread, sudoku, max_calls)
+
+if __name__ == "__main__":
+    sudoku = Sudoku(3)
+    sudoku.shuffle()
+
+    ejecutar_multithreading(sudoku, num_hilos=4, max_calls=500)
     
+
